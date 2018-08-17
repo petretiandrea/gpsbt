@@ -2,21 +2,12 @@ package com.example.petretiandrea.gpsreceiver;
 
 import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothServerSocket;
-import android.bluetooth.BluetoothSocket;
 import android.content.ComponentName;
-import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
-import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Location;
-import android.location.LocationListener;
-import android.location.LocationManager;
-import android.location.OnNmeaMessageListener;
 import android.os.IBinder;
-import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -26,48 +17,59 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.ToggleButton;
 
-import com.example.petretiandrea.gpsreceiver.bluetooth.BTClient;
-import com.example.petretiandrea.gpsreceiver.bluetooth.BluetoothService;
-import com.example.petretiandrea.gpsreceiver.bluetooth.BroadcastBluetooth;
+import com.example.petretiandrea.gpsreceiver.bluetooth.BTManager;
+import com.example.petretiandrea.gpsreceiver.service.GService;
+import com.example.petretiandrea.gpsreceiver.service.GServiceCallback;
+import com.example.petretiandrea.gpsreceiver.util.Constants;
+import com.example.petretiandrea.gpsreceiver.util.Utils;
 
-import java.io.IOException;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.Locale;
 
-public class MainActivity extends AppCompatActivity implements OnNmeaMessageListener,
-        LocationListener, ServiceConnection {
+public class MainActivity extends AppCompatActivity implements ServiceConnection, GServiceCallback {
 
     private static final int LOCATION_PERMISSION = 2000;
     private static final int REQUEST_ENABLE_BT = 2001;
 
     private static final String TAG = MainActivity.class.getName();
-    private LocationManager mLocationManger;
 
-
-    private BluetoothService mBTService;
+    private GService mService;
     private Intent mIntentService;
+
+    /** UI elements **/
+    private TextView viewTxtLastFix;
+    private TextView viewTxtLongitude;
+    private TextView viewTxtLatitude;
+    private TextView viewTxtAltitude;
+    private TextView viewTxtSpeed;
+    private TextView viewTxtAccuray;
+    private TextView viewTxtNumberSat;
+    private TextView viewTxtStatusBluetooth;
+    private ImageView viewStatusBluetooth;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        mLocationManger = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        mIntentService = new Intent(this, BluetoothService.class);
+        /* Init UI elements */
+        viewTxtLastFix = findViewById(R.id.txtLastFix);
+        viewTxtLongitude = findViewById(R.id.txtLongitude);
+        viewTxtLatitude = findViewById(R.id.txtLatitude);
+        viewTxtAltitude = findViewById(R.id.txtAltitude);
+        viewTxtSpeed = findViewById(R.id.txtSpeed);
+        viewTxtAccuray = findViewById(R.id.txtAccuray);
+        viewTxtNumberSat = findViewById(R.id.txtNumberSat);
+        viewTxtStatusBluetooth = findViewById(R.id.txtBtStatus);
+        viewStatusBluetooth = findViewById(R.id.imageStatusBT);
 
-        BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        if (bluetoothAdapter == null) {
+        mIntentService = new Intent(this, GService.class);
+
+        if (BluetoothAdapter.getDefaultAdapter() == null) {
             // Device doesn't support Bluetooth
             Toast.makeText(this,"This device not support Bluetooth", Toast.LENGTH_LONG).show();
             finish();
@@ -91,9 +93,7 @@ public class MainActivity extends AppCompatActivity implements OnNmeaMessageList
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        mLocationManger.removeNmeaListener(this);
-        mLocationManger.removeUpdates(this);
-        stopService(new Intent(this, BluetoothService.class));
+        stopService(mIntentService);
     }
 
     @Override
@@ -115,21 +115,29 @@ public class MainActivity extends AppCompatActivity implements OnNmeaMessageList
         }
     }
 
-    public void onClickGpsStart(View view) {
+
+    public void onClickBTDiscover(View view) {
         // start bt
         BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         if(!bluetoothAdapter.isEnabled()) {
             startActivityForResult(new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE), REQUEST_ENABLE_BT);
+        } else {
+            Intent discoverableIntent =
+                    new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
+            discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300);
+            startActivity(discoverableIntent);
         }
+    }
 
-        startRequestUpdateLocation();
-        /*try {
-            mTCPServer = new TCPServer();
-            mTCPServer.start();
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }*/
+    public void onClickStart(View view) {
+        if(view instanceof ToggleButton) {
+            ToggleButton btn = (ToggleButton) view;
+            if(btn.isChecked()) {
+                startGPSService();
+            } else {
+                stopGPSService();
+            }
+        }
     }
 
     @Override
@@ -137,12 +145,7 @@ public class MainActivity extends AppCompatActivity implements OnNmeaMessageList
         super.onActivityResult(requestCode, resultCode, data);
         if(requestCode == REQUEST_ENABLE_BT) {
             if(resultCode == RESULT_OK) {
-                BroadcastBluetooth broadcastBluetooth = new BroadcastBluetooth(new BroadcastBluetooth.BluetoothChangeListener() {
-                    @Override
-                    public void onBluetoothStatusChange(int status) {
-
-                    }
-                });
+                onClickBTDiscover(null);
             }
         }
     }
@@ -150,7 +153,7 @@ public class MainActivity extends AppCompatActivity implements OnNmeaMessageList
     /**
      * Start requiring location update.
      */
-    private void startRequestUpdateLocation() {
+    private void startGPSService() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this,
@@ -158,14 +161,14 @@ public class MainActivity extends AppCompatActivity implements OnNmeaMessageList
                     LOCATION_PERMISSION);
             return;
         }
+        mIntentService.setAction(Constants.ACTION_START_BT_SERVICE);
+        startService(mIntentService);
+    }
 
-        startService(new Intent(this, BluetoothService.class));
-        // retrive provider from settings
-        int provider = Integer.parseInt(PreferenceManager.getDefaultSharedPreferences(this).getString(getString(R.string.pref_key_location_provider), "1"));
-        // provider set to 1 is GPS_PROVIDER ONLY, 0 is NETWORK_PROVIDER ONLY.
-        mLocationManger.requestLocationUpdates((provider == 1) ? LocationManager.GPS_PROVIDER : LocationManager.NETWORK_PROVIDER,
-                3000, 0, this);
-        mLocationManger.addNmeaListener(this);
+    private void stopGPSService() {
+        mIntentService.setAction(Constants.ACTION_STOP_BT_SERVICE);
+        startService(mIntentService);
+        stopService(mIntentService);
     }
 
     @Override
@@ -180,50 +183,68 @@ public class MainActivity extends AppCompatActivity implements OnNmeaMessageList
                         Toast.makeText(this, "Ho bisogno dei permessi per poter funzionare :(", Toast.LENGTH_SHORT).show();
                         finish();
                     } else
-                        startRequestUpdateLocation();
+                        startGPSService();
                 }
                 break;
         }
     }
 
-
-    @Override
-    public void onNmeaMessage(String s, long l) {
-        //System.out.println("Nmea: " + s);
-        /*if(mBTService != null)
-            System.out.println(mBTService.getBTServer().getBTsConnected().size());
-            for (BTClient btClient : mBTService.getBTServer().getBTsConnected())
-                btClient.write(s.getBytes());*/
-    }
-
-    @Override
-    public void onLocationChanged(Location location) {
-
-    }
-
-    @Override
-    public void onStatusChanged(String s, int i, Bundle bundle) {
+    /**
+     * Update the UI for location change.
+     * @param location Location fixed.
+     */
+    private void updateLocationUI(Location location) {
+        viewTxtLastFix.setText(Utils.formatDateTime(Utils.localDateFromUTC(location.getTime())));
+        viewTxtLongitude.setText(String.format(Locale.getDefault(), "%f", location.getLongitude()));
+        viewTxtLatitude.setText(String.format(Locale.getDefault(), "%f", location.getLatitude()));
+        viewTxtAccuray.setText(location.hasAccuracy() ? String.format(Locale.getDefault(), "%.5f m", location.getAccuracy()) : getString(R.string.empty));
+        viewTxtAltitude.setText(location.hasAltitude() ? String.format(Locale.getDefault(), "%.5f m", location.getAltitude()) : getString(R.string.empty));
+        viewTxtSpeed.setText(location.hasSpeed() ? String.format(Locale.getDefault(), "%.5f m/s", location.getSpeed()) : getString(R.string.empty));
+        if(location.getExtras() != null)
+            viewTxtNumberSat.setText(String.format(Locale.getDefault(), "%d", (int) location.getExtras().get("satellites")));
+        else
+            viewTxtNumberSat.setText(getString(R.string.empty));
 
     }
 
-    @Override
-    public void onProviderEnabled(String s) {
-        Log.d(TAG, "onProviderEnabled " + s);
-    }
-
-    @Override
-    public void onProviderDisabled(String s) {
-
+    private void updateBTStatusUI(int newState, String deviceName) {
+        switch (newState) {
+            case BTManager.STATE_LISTEN:
+                viewStatusBluetooth.setImageResource(android.R.color.holo_orange_light);
+                viewTxtStatusBluetooth.setText(getString(R.string.label_bt_status_listen));
+                break;
+            case BTManager.STATE_CONNECTED:
+                viewStatusBluetooth.setImageResource(android.R.color.holo_green_light);
+                viewTxtStatusBluetooth.setText(String.format(Locale.getDefault(), getString(R.string.label_bt_status_connected), deviceName));
+                break;
+            case BTManager.STATE_NONE:
+                viewStatusBluetooth.setImageResource(android.R.color.holo_red_light);
+                viewTxtStatusBluetooth.setText(getString(R.string.label_bt_status_none));
+                break;
+        }
     }
 
     @Override
     public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
-        Log.d(TAG, "Service Bind!");
-        mBTService = ((BluetoothService.LocalBinder)iBinder).getService();
+        mService = ((GService.LocalBinder)iBinder).getService();
+        mService.setGServiceCallback(this);
+        if(mService.getBTManager() != null)
+            updateBTStatusUI(mService.getBTManager().getState(), (mService.getBTManager().getDeviceConnected() != null) ? mService.getBTManager().getDeviceConnected().getName() : null);
     }
 
     @Override
     public void onServiceDisconnected(ComponentName componentName) {
-        Log.d(TAG, "Service disconnected!");
+        mService.setGServiceCallback(null);
+        mService = null;
+    }
+
+    @Override
+    public void onBTStateChange(int newState, String name) {
+        updateBTStatusUI(newState, name);
+    }
+
+    @Override
+    public void onLocationUpdate(Location location) {
+        updateLocationUI(location);
     }
 }

@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">GpsReceiver</string>
+    <string name="app_name">GPS BT</string>
     <string name="title_activity_settings">Settings</string>
 
     <!-- Example General settings -->
@@ -20,5 +20,22 @@
 
 
     <string name="settings">Settings</string>
+    <string name="label_current_time">Orario</string>
+    <string name="label_last_fix">Orario Fix</string>
+    <string name="empty">-</string>
+    <string name="label_longitude">Longitudine</string>
+    <string name="label_latitude">Latitudine</string>
+    <string name="label_number_sat">Numero Satelliti</string>
+    <string name="label_altitude">Altitudine</string>
+    <string name="label_accuray">Precisione</string>
+    <string name="label_speed">Velocità</string>
+    <string name="label_bt_discover">BT Visibile</string>
+    <string name="label_update_location">Aggiornameto Posizione</string>
+    <string name="label_bt_status">Connessione BT</string>
+    <string name="label_bt_status_listen">In attessa di connesioni…</string>
+    <string name="label_bt_status_connected">Connesso con %s</string>
+    <string name="label_bt_status_none">Non attivo.</string>
+    <string name="label_start">Start</string>
+    <string name="label_stop">Stop</string>
 
 </resources>
