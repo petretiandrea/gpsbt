@@ -11,5 +11,5 @@ public class Constants {
     public static final String BT_NAME = "BT_GPS";
 
     public static final String ACTION_START_BT_SERVICE = "start_bt_service";
-    public static final String ACTION_STOP_BT_SERVICE = "start_bt_service";
+    public static final String ACTION_STOP_BT_SERVICE = "stop_bt_service";
 }

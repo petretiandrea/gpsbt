@@ -65,6 +65,7 @@ public class GService extends Service {
         Log.d(TAG, "onStartCommand");
 
         String action = intent.getAction();
+        System.out.println(action);
         synchronized (this) {
             if(action != null && action.equals(Constants.ACTION_START_BT_SERVICE)) {
                 if (!mRunning) {
@@ -151,8 +152,9 @@ public class GService extends Service {
                         default:
                             break;
                     }
-                    String deviceName =  (message.arg1 == BTManager.STATE_CONNECTED && message.obj != null) ?
-                            ((BTManager)message.obj).getDeviceConnected().getName() : null;
+                    BTManager btManager = (message.arg1 == BTManager.STATE_CONNECTED && message.obj != null) ?
+                            ((BTManager)message.obj) : null;
+                    String deviceName = (btManager != null && btManager.getDeviceConnected() != null) ? btManager.getDeviceConnected().getName() : "";
                     if(getGServiceCallback() != null) getGServiceCallback().onBTStateChange(message.arg1, deviceName);
                     break;
                 }

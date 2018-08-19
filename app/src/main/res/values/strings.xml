@@ -9,8 +9,8 @@
     <string name="pref_key_location_provider">location_provider</string>
 
     <string-array name="list_preference_location_provider_entries">
-        <item>Network Only</item>
-        <item>Gps Only</item>
+        <item>Solo GPS</item>
+        <item>Solo Network</item>
     </string-array>
 
     <integer-array name="list_preference_location_provide_entry_values">

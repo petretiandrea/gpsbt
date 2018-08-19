@@ -14,6 +14,8 @@ import android.support.v4.app.ActivityCompat;
 
 import com.example.petretiandrea.gpsreceiver.R;
 import com.example.petretiandrea.gpsreceiver.bluetooth.BTManager;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
 
 public class GPSManager {
 
@@ -94,8 +96,8 @@ public class GPSManager {
                 return false;
             }
             // retrive provider from settings
-            int provider = Integer.parseInt(PreferenceManager.getDefaultSharedPreferences(context).getString(context.getString(R.string.pref_key_location_provider), "1"));
-            mLocationManager.requestLocationUpdates((provider == 1) ? LocationManager.GPS_PROVIDER : LocationManager.NETWORK_PROVIDER,
+            int provider = Integer.parseInt(PreferenceManager.getDefaultSharedPreferences(context).getString(context.getString(R.string.pref_key_location_provider), "0"));
+            mLocationManager.requestLocationUpdates((provider == 0) ? LocationManager.GPS_PROVIDER : LocationManager.NETWORK_PROVIDER,
                     0, 0, mLocationListener);
             mLocationManager.addNmeaListener(mNmeaMessageListener);
             return true;

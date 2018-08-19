@@ -165,6 +165,9 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         startService(mIntentService);
     }
 
+    /**
+     * Stop the background service
+     */
     private void stopGPSService() {
         mIntentService.setAction(Constants.ACTION_STOP_BT_SERVICE);
         startService(mIntentService);
@@ -200,9 +203,9 @@ public class MainActivity extends AppCompatActivity implements ServiceConnection
         viewTxtAccuray.setText(location.hasAccuracy() ? String.format(Locale.getDefault(), "%.5f m", location.getAccuracy()) : getString(R.string.empty));
         viewTxtAltitude.setText(location.hasAltitude() ? String.format(Locale.getDefault(), "%.5f m", location.getAltitude()) : getString(R.string.empty));
         viewTxtSpeed.setText(location.hasSpeed() ? String.format(Locale.getDefault(), "%.5f m/s", location.getSpeed()) : getString(R.string.empty));
-        if(location.getExtras() != null)
-            viewTxtNumberSat.setText(String.format(Locale.getDefault(), "%d", (int) location.getExtras().get("satellites")));
-        else
+        if(location.getExtras() != null) {
+            viewTxtNumberSat.setText(String.format(Locale.getDefault(), "%d", location.getExtras().getInt("satellites", 0)));
+        } else
             viewTxtNumberSat.setText(getString(R.string.empty));
 
     }

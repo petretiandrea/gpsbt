@@ -128,7 +128,7 @@ public class BTManager {
      * @return BluetoothDevice object for currente device connected.
      */
     public BluetoothDevice getDeviceConnected() {
-        if(mConnectedThread != null && mConnectedThread.isAlive())
+        if(mConnectedThread != null && mConnectedThread.isAlive() && mConnectedThread.mBluetoothDevice != null)
             return mConnectedThread.mBluetoothDevice;
         return null;
     }
